@@ -1,15 +1,22 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Digital Ocean Spaces configuration
-const spacesClient = new S3Client({
-  endpoint: process.env.DO_SPACES_ENDPOINT, // e.g., "https://nyc3.digitaloceanspaces.com"
-  region: process.env.DO_SPACES_REGION || 'us-east-1', // Digital Ocean Spaces region
-  credentials: {
-    accessKeyId: process.env.DO_SPACES_KEY || '',
-    secretAccessKey: process.env.DO_SPACES_SECRET || '',
-  },
-});
+// Lazy initialization of S3Client to avoid build-time errors
+let spacesClientInstance: S3Client | null = null;
+
+function getSpacesClient(): S3Client {
+  if (!spacesClientInstance) {
+    spacesClientInstance = new S3Client({
+      endpoint: process.env.DO_SPACES_ENDPOINT, // e.g., "https://nyc3.digitaloceanspaces.com"
+      region: process.env.DO_SPACES_REGION || 'us-east-1', // Digital Ocean Spaces region
+      credentials: {
+        accessKeyId: process.env.DO_SPACES_KEY || '',
+        secretAccessKey: process.env.DO_SPACES_SECRET || '',
+      },
+    });
+  }
+  return spacesClientInstance;
+}
 
 const BUCKET_NAME = process.env.DO_SPACES_BUCKET || '';
 const CDN_ENDPOINT = process.env.DO_SPACES_CDN_ENDPOINT; // Optional CDN endpoint
@@ -37,7 +44,7 @@ export async function uploadToSpaces(
       ACL: 'public-read', // Make the file publicly accessible
     });
 
-    await spacesClient.send(command);
+    await getSpacesClient().send(command);
 
     // Return the public URL
     const publicUrl = CDN_ENDPOINT 
@@ -59,7 +66,7 @@ export async function deleteFromSpaces(fileName: string): Promise<void> {
       Key: fileName,
     });
 
-    await spacesClient.send(command);
+    await getSpacesClient().send(command);
   } catch {
     // Silent error handling - don't log to console
     throw new Error('Failed to delete image');
@@ -87,7 +94,7 @@ export async function generatePresignedUrl(
       ACL: 'public-read',
     });
 
-    const signedUrl = await getSignedUrl(spacesClient, command, { expiresIn });
+    const signedUrl = await getSignedUrl(getSpacesClient(), command, { expiresIn });
     return signedUrl;
   } catch {
     // Silent error handling - don't log to console

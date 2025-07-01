@@ -9,7 +9,19 @@ import {
   MAGIC_LINK_EXPIRY as _MAGIC_LINK_EXPIRY
 } from '@/lib/auth-constants';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization of Resend to avoid build-time errors
+let resendInstance: Resend | null = null;
+
+function getResendInstance(): Resend {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY environment variable is not set');
+    }
+    resendInstance = new Resend(apiKey);
+  }
+  return resendInstance;
+}
 
 // Re-export constants for backward compatibility
 export const SESSION_COOKIE_NAME = _SESSION_COOKIE_NAME;
@@ -88,7 +100,7 @@ export async function sendMagicLink(email: string, token: string) {
   const magicUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/admin/auth/verify?token=${token}`;
   
   try {
-    await resend.emails.send({
+    await getResendInstance().emails.send({
       from: process.env.FROM_EMAIL || 'noreply@gremlinlink.com',
       to: email,
       subject: 'Sign in to GremlinLink Admin',
