@@ -1,4 +1,4 @@
-![gremlinlink by gremlinlabs](assets/gremlinmodes-gremlinlink.jpg)
+![gremlinlink by gremlinlabs](assets/gremlinlabs-gremlinlink.jpg)
 
 # GremlinLink 🔗
 
