@@ -1,0 +1,284 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  /* GremlinLabs Brand Colors */
+  --color-gremlin-green: #1FCC00;
+  --color-dark-gremlin: #17A300;
+  --color-bright-gremlin: #27EE00;
+  --color-midnight-mischief: #212121;
+  --color-shadow-realm: #323232;
+  --color-lab-white: #F8F8F8;
+  --color-lab-gray: #E0E0E0;
+  --color-slurpy-blue: #00A3FF;
+  --color-disruptive-orange: #FF5722;
+  --color-mischief-purple: #8000FF;
+  --color-chaotic-yellow: #FFD600;
+  
+  /* Base Colors - Light Mode */
+  --color-background: #F0F5F0; /* Lab White */
+  --color-foreground: #212121; /* Midnight Mischief */
+  --color-card: #FFFFFF;
+  --color-card-foreground: #212121; /* Midnight Mischief */
+  --color-card-elevated: #FAFAFA; /* Slightly elevated surface for cards on cards */
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #212121; /* Midnight Mischief */
+  --color-primary: #1FCC00; /* Gremlin Green */
+  --color-primary-foreground: #212121; /* Midnight Mischief for better contrast */
+  --color-secondary: #8000FF; /* Mischief Purple */
+  --color-secondary-foreground: #FFFFFF;
+  --color-muted: #E6EBE6; /* Lab Gray */
+  --color-muted-foreground: #6B7280;
+  --color-accent: #00A3FF; /* Slurpy Blue */
+  --color-accent-foreground: #FFFFFF;
+  --color-destructive: #FF5722; /* Disruptive Orange */
+  --color-destructive-foreground: #FFFFFF;
+  --color-border: #E0E0E0; /* Lab Gray */
+  --color-input: #FFFFFF;
+  --color-input-contrast: #F5F5F5; /* More contrasted input background */
+  --color-ring: #1FCC00; /* Gremlin Green */
+  --color-sidebar: #EBF0EB; /* Sidebar background - light mode */
+  --color-sidebar-border: #E0E0E0; /* Sidebar border - light mode */
+
+  /* Dark Mode Color Overrides */
+  --color-background-dark: #212322; /* Midnight Mischief */
+  --color-foreground-dark: #F8F8F8; /* Lab White */
+  --color-card-dark: #262927; /* Shadow Realm */
+  --color-card-foreground-dark: #F8F8F8; /* Lab White */
+  --color-card-elevated-dark: #2B2E2C; /* Slightly elevated surface for cards on cards */
+  --color-popover-dark: #323232; /* Shadow Realm */
+  --color-popover-foreground-dark: #F8F8F8; /* Lab White */
+  --color-primary-dark: #1FCC00; /* Gremlin Green stays vibrant */
+  --color-primary-foreground-dark: #212121; /* Midnight Mischief */
+  --color-secondary-dark: #8000FF; /* Mischief Purple */
+  --color-secondary-foreground-dark: #F8F8F8; /* Lab White */
+  --color-muted-dark: #212421; /* Shadow Realm */
+  --color-muted-foreground-dark: #9CA3AF;
+  --color-accent-dark: #00A3FF; /* Slurpy Blue */
+  --color-accent-foreground-dark: #F8F8F8; /* Lab White */
+  --color-destructive-dark: #FF5722; /* Disruptive Orange */
+  --color-destructive-foreground-dark: #F8F8F8; /* Lab White */
+  --color-border-dark: #353835; /* Shadow Realm */
+  --color-input-dark: #232623; /* Shadow Realm */
+  --color-input-contrast-dark: #1C1F1C; /* More contrasted input background for dark mode */
+  --color-ring-dark: #1FCC00; /* Gremlin Green */
+  --color-sidebar-dark: #181A19; /* Sidebar background - dark mode */
+  --color-sidebar-border-dark: #222222; /* Sidebar border - dark mode */
+
+  /* Border Radius */
+  --radius: 0.5rem;
+
+  /* Font Families */
+  --font-family-sans: var(--font-inter), system-ui, sans-serif;
+  --font-family-heading: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-family-mono: var(--font-space-mono), 'Courier New', monospace;
+}
+
+/* Dark mode color switching */
+.dark {
+  --color-background: var(--color-background-dark);
+  --color-foreground: var(--color-foreground-dark);
+  --color-card: var(--color-card-dark);
+  --color-card-foreground: var(--color-card-foreground-dark);
+  --color-card-elevated: var(--color-card-elevated-dark);
+  --color-popover: var(--color-popover-dark);
+  --color-popover-foreground: var(--color-popover-foreground-dark);
+  --color-primary: var(--color-primary-dark);
+  --color-primary-foreground: var(--color-primary-foreground-dark);
+  --color-secondary: var(--color-secondary-dark);
+  --color-secondary-foreground: var(--color-secondary-foreground-dark);
+  --color-muted: var(--color-muted-dark);
+  --color-muted-foreground: var(--color-muted-foreground-dark);
+  --color-accent: var(--color-accent-dark);
+  --color-accent-foreground: var(--color-accent-foreground-dark);
+  --color-destructive: var(--color-destructive-dark);
+  --color-destructive-foreground: var(--color-destructive-foreground-dark);
+  --color-border: var(--color-border-dark);
+  --color-input: var(--color-input-dark);
+  --color-input-contrast: var(--color-input-contrast-dark);
+  --color-ring: var(--color-ring-dark);
+  --color-sidebar: var(--color-sidebar-dark);
+  --color-sidebar-border: var(--color-sidebar-border-dark);
+}
+
+/* Base styles */
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-family-sans);
+}
+
+/* Typography Classes */
+.font-heading {
+  font-family: var(--font-family-heading);
+}
+
+.font-mono {
+  font-family: var(--font-family-mono);
+}
+
+/* Line Clamp Utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+/* Custom Scrollbar Styles */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-muted-foreground);
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thumb-border::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+}
+
+.hover\:scrollbar-thumb-muted-foreground:hover::-webkit-scrollbar-thumb {
+  background-color: var(--color-muted-foreground);
+}
+
+/* Utility Classes for Semantic Colors */
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.bg-primary-hover {
+  background-color: var(--color-dark-gremlin);
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.bg-accent {
+  background-color: var(--color-accent);
+}
+
+.text-accent {
+  color: var(--color-accent);
+}
+
+.bg-destructive {
+  background-color: var(--color-destructive);
+}
+
+.text-destructive {
+  color: var(--color-destructive);
+}
+
+.bg-success {
+  background-color: var(--color-gremlin-green);
+}
+
+.text-success {
+  color: var(--color-gremlin-green);
+}
+
+.bg-warning {
+  background-color: var(--color-chaotic-yellow);
+}
+
+.text-warning {
+  color: var(--color-chaotic-yellow);
+}
+
+.bg-info {
+  background-color: var(--color-slurpy-blue);
+}
+
+.text-info {
+  color: var(--color-slurpy-blue);
+}
+
+/* Status Badge Variants */
+.badge-success {
+  background-color: rgba(31, 204, 0, 0.1);
+  color: var(--color-gremlin-green);
+}
+
+.badge-error {
+  background-color: rgba(255, 87, 34, 0.1);
+  color: var(--color-disruptive-orange);
+}
+
+.badge-warning {
+  background-color: rgba(255, 214, 0, 0.1);
+  color: var(--color-chaotic-yellow);
+}
+
+.badge-info {
+  background-color: rgba(0, 163, 255, 0.1);
+  color: var(--color-slurpy-blue);
+}
+
+/* Gremlin Factor - Subtle personality elements */
+.gremlin-glow {
+  box-shadow: 0 0 20px color-mix(in srgb, var(--color-gremlin-green) 30%, transparent);
+}
+
+.gremlin-hover:hover {
+  transform: translateY(-1px);
+  transition: transform 0.2s ease;
+}
+
+/* Chart tooltip styles */
+.recharts-tooltip-wrapper {
+  --tooltip-bg: var(--color-card);
+  --tooltip-border: var(--color-border);
+}
+
+/* Smooth theme transitions */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Additional utility classes for admin pages */
+.shadow-xs {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+

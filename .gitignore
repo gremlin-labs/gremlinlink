@@ -1,0 +1,151 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# Environment variables (CRITICAL - contains API keys and secrets)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.backup
+.env.*.backup
+
+# Next.js build output
+.next/
+out/
+build/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+drizzle/
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env.test
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Temporary folders
+tmp/
+temp/
+
+# Build artifacts
+dist/
+
+# Cache
+.cache/
+
+# Lighthouse reports
+lighthouse-report.html
+
+# Local development files
+*.local
+
+# Uploads (if they contain sensitive user data)
+uploads/
+public/uploads/
+
+# Backup files
+*.backup
+*.bak
+
+# Development database files
+dev.db
+development.db
+
+# Sensitive configuration files
+config/secrets.json
+secrets.json
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+.roomodes
+# GremlinModes Framework Files
+.gremlinmodes/
+.roomodes
+gremlinmodes/
+agent.sh
+stash.sh
