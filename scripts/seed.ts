@@ -28,7 +28,7 @@ const client = postgres(process.env.DATABASE_URL, {
 const db = drizzle(client, { schema });
 
 function readWordList(filename: string): string[] {
-  const filePath = join(__dirname, '..', 'gremlinmodes', 'inputs', filename);
+  const filePath = join(__dirname, '..', 'data', filename);
   
   if (!existsSync(filePath)) {
     console.error(`❌ File not found: ${filePath}`);
