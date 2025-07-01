@@ -43,8 +43,6 @@ export function ContentConfiguration({
   };
 
   const handleBlockChange = (updates: Partial<ContentBlock>) => {
-    console.log('ContentConfiguration: Block change received:', updates);
-    
     // Merge the updates properly
     const newFormData = {
       ...formData,
@@ -52,7 +50,6 @@ export function ContentConfiguration({
       metadata: updates.metadata || formData.metadata,
     };
     
-    console.log('ContentConfiguration: Sending updated form data:', newFormData);
     onChange(newFormData);
   };
 

@@ -29,7 +29,7 @@ interface RedirectData {
 }
 
 export const RedirectEditor: React.FC<RedirectEditorProps> = ({ block, onChange }) => {
-  const [showDisplayOptions, setShowDisplayOptions] = useState(false);
+  const [showDisplayOptions, setShowDisplayOptions] = useState(true);
   
   const data = block.data as unknown as RedirectData;
 
@@ -124,6 +124,7 @@ export const RedirectEditor: React.FC<RedirectEditorProps> = ({ block, onChange 
               </CardTitle>
               <p className="text-sm text-muted-foreground text-left pr-6">
                 Customize how this redirect appears when embedded in pages and shared on social media
+                <span className="text-xs ml-2 opacity-75">(Click to {showDisplayOptions ? 'collapse' : 'expand'})</span>
               </p>
             </CardHeader>
           </CollapsibleTrigger>
@@ -139,12 +140,7 @@ export const RedirectEditor: React.FC<RedirectEditorProps> = ({ block, onChange 
                   <Input
                     id="cardTitle"
                     value={data.cardTitle || ''}
-                    onChange={(e) => {
-                      updateData('cardTitle', e.target.value);
-                      // Also update metadata for SEO
-                      const newMetadata = { ...block.metadata, title: e.target.value };
-                      onChange({ metadata: newMetadata });
-                    }}
+                    onChange={(e) => updateData('cardTitle', e.target.value)}
                     placeholder={data.url ? extractDomain(data.url) : 'Title for cards and search engines'}
                     className="bg-input-contrast h-11 text-base"
                   />
@@ -158,12 +154,7 @@ export const RedirectEditor: React.FC<RedirectEditorProps> = ({ block, onChange 
                   <Textarea
                     id="cardDescription"
                     value={data.cardDescription || ''}
-                    onChange={(e) => {
-                      updateData('cardDescription', e.target.value);
-                      // Also update metadata for SEO
-                      const newMetadata = { ...block.metadata, description: e.target.value };
-                      onChange({ metadata: newMetadata });
-                    }}
+                    onChange={(e) => updateData('cardDescription', e.target.value)}
                     placeholder="Brief description for cards, search engines, and social media"
                     rows={3}
                     className="bg-input-contrast text-base resize-none"
@@ -181,12 +172,7 @@ export const RedirectEditor: React.FC<RedirectEditorProps> = ({ block, onChange 
                 <div>
                   <ImageSelector
                     value={data.cardImage || null}
-                    onChange={(image) => {
-                      updateData('cardImage', image);
-                      // Also update metadata for Open Graph
-                      const newMetadata = { ...block.metadata, image };
-                      onChange({ metadata: newMetadata });
-                    }}
+                    onChange={(image) => updateData('cardImage', image)}
                     label="Image"
                     helpText="Used for card display and social media sharing (Open Graph)"
                     recommendedSize={{ width: 1200, height: 630 }}
