@@ -284,7 +284,12 @@ export class LinkService {
     return defaultLinks;
   }
 
-  static async incrementClickCount(linkId: string): Promise<void> {
+  static async incrementClickCount(linkId: string, metadata?: {
+    userAgent?: string;
+    referrer?: string;
+    ipAddress?: string;
+    [key: string]: unknown;
+  }): Promise<void> {
     // Get current block to increment click count
     const block = await SlugService.getBlockById(linkId);
     if (!block || block.renderer !== 'redirect') {
@@ -300,13 +305,25 @@ export class LinkService {
       clicks_count: currentClickCount + 1,
     });
 
-    // Also record click in clicks table for analytics
+    // Also record click in clicks table for analytics with enhanced data
     try {
+      // Basic country detection from IP (placeholder)
+      let country: string | undefined;
+      if (metadata?.ipAddress) {
+        // In production, implement proper GeoIP lookup here
+        // country = await detectCountryFromIP(metadata.ipAddress);
+      }
+
       await db.insert(clicks).values({
         block_id: linkId,
         timestamp: new Date(),
+        referrer: metadata?.referrer,
+        user_agent: metadata?.userAgent,
+        ip_address: metadata?.ipAddress,
+        country: country,
         metadata: {
           click_type: 'link_redirect',
+          ...metadata,
         },
       });
     } catch {

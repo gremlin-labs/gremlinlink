@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { BlockService } from '@/lib/services/block-service';
 import { renderBlock, getBlockMetadata } from '@/lib/renderers';
 import { BlockRenderer } from '@/components/blocks/BlockRenderer';
+import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 
 /**
@@ -21,55 +22,71 @@ interface UniversalPageProps {
   params: Promise<{ slug: string[] }>;
 }
 
-// Generate metadata for SEO
+/**
+ * Generate metadata for SEO optimization
+ */
 export async function generateMetadata({ params }: UniversalPageProps): Promise<Metadata> {
   const { slug } = await params;
   const slugString = slug?.join('/') || '';
   
-  try {
-    const block = await BlockService.getBlockBySlug(slugString);
-    
-    if (!block) {
-      return {
-        title: 'Not Found',
-        description: 'The requested content could not be found.',
-      };
-    }
-
-    const metadata = getBlockMetadata(block);
-    
+  const block = await BlockService.getBlockBySlug(slugString);
+  
+  if (!block) {
     return {
-      title: metadata.title,
-      description: metadata.description,
-      openGraph: {
-        title: metadata.ogTitle || metadata.title,
-        description: metadata.ogDescription || metadata.description,
-        type: (metadata.ogType as 'website' | 'article') || 'website',
-        images: metadata.ogImage ? [{ url: metadata.ogImage }] : undefined,
-      },
-      twitter: {
-        card: (metadata.twitterCard as 'summary' | 'summary_large_image') || 'summary',
-        title: metadata.twitterTitle || metadata.title,
-        description: metadata.twitterDescription || metadata.description,
-        images: metadata.twitterImage ? [metadata.twitterImage] : undefined,
-      },
-      robots: metadata.robots,
-      alternates: {
-        canonical: metadata.canonicalUrl,
-      },
-    };
-  } catch {
-    // Handle error silently for metadata generation
-    return {
-      title: 'Content',
-      description: 'View content',
+      title: 'Not Found',
+      description: 'The requested page could not be found.',
     };
   }
+
+  const metadata = getBlockMetadata(block);
+  
+  return {
+    title: metadata.title,
+    description: metadata.description,
+    robots: metadata.robots,
+    openGraph: {
+      title: metadata.title,
+      description: metadata.description,
+    },
+  };
+}
+
+/**
+ * Extract client IP address from headers
+ */
+function getClientIP(headersList: Headers): string | undefined {
+  // Check various headers for IP address (in order of preference)
+  const ipHeaders = [
+    'x-forwarded-for',
+    'x-real-ip',
+    'cf-connecting-ip', // Cloudflare
+    'x-client-ip',
+    'x-cluster-client-ip',
+  ];
+
+  for (const header of ipHeaders) {
+    const value = headersList.get(header);
+    if (value) {
+      // x-forwarded-for can contain multiple IPs, take the first one
+      const ip = value.split(',')[0].trim();
+      if (ip && ip !== '::1' && ip !== '127.0.0.1') {
+        return ip;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 export default async function UniversalPage({ params }: UniversalPageProps) {
   const { slug } = await params;
   const slugString = slug?.join('/') || '';
+  
+  // Get request headers for analytics
+  const headersList = await headers();
+  const userAgent = headersList.get('user-agent') || undefined;
+  const referrer = headersList.get('referer') || undefined;
+  const ipAddress = getClientIP(headersList);
   
   // Get block with performance optimization
   const block = await BlockService.getBlockBySlug(slugString);
@@ -91,10 +108,13 @@ export default async function UniversalPage({ params }: UniversalPageProps) {
         notFound();
       }
       
-      // Track analytics asynchronously (non-blocking)
+      // Track analytics asynchronously with enhanced data (non-blocking)
       BlockService.trackClick(block.id, {
         timestamp: new Date().toISOString(),
         type: 'redirect',
+        userAgent,
+        referrer,
+        ipAddress,
       }).catch(() => {
         // Handle analytics error silently
       });
@@ -114,10 +134,13 @@ export default async function UniversalPage({ params }: UniversalPageProps) {
       notFound();
     }
 
-    // Track analytics asynchronously (non-blocking)
+    // Track analytics asynchronously with enhanced data (non-blocking)
     BlockService.trackClick(block.id, {
       timestamp: new Date().toISOString(),
       type: 'view',
+      userAgent,
+      referrer,
+      ipAddress,
     }).catch(() => {
       // Handle analytics error silently
     });

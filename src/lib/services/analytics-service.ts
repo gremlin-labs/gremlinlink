@@ -6,6 +6,7 @@ export interface AnalyticsData {
   totalClicks: number;
   totalLinks: number;
   activeLinks: number;
+  uniqueVisitors: number;
   recentClicks: ClickData[];
   clickTrends: TrendData[];
   topLinks: TopLinkData[];
@@ -19,6 +20,8 @@ export interface ClickData {
   linkTitle: string;
   referrer?: string;
   country?: string;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 export interface TrendData {
@@ -43,6 +46,79 @@ export interface DateRange {
   end: Date;
 }
 
+// Country code to name mapping for common countries
+const COUNTRY_NAMES: Record<string, string> = {
+  'US': 'United States',
+  'CA': 'Canada',
+  'GB': 'United Kingdom',
+  'DE': 'Germany',
+  'FR': 'France',
+  'ES': 'Spain',
+  'IT': 'Italy',
+  'NL': 'Netherlands',
+  'AU': 'Australia',
+  'JP': 'Japan',
+  'CN': 'China',
+  'IN': 'India',
+  'BR': 'Brazil',
+  'MX': 'Mexico',
+  'RU': 'Russia',
+  'KR': 'South Korea',
+  'SG': 'Singapore',
+  'CH': 'Switzerland',
+  'SE': 'Sweden',
+  'NO': 'Norway',
+  'DK': 'Denmark',
+  'FI': 'Finland',
+  'BE': 'Belgium',
+  'AT': 'Austria',
+  'IE': 'Ireland',
+  'PT': 'Portugal',
+  'PL': 'Poland',
+  'CZ': 'Czech Republic',
+  'HU': 'Hungary',
+  'GR': 'Greece',
+  'TR': 'Turkey',
+  'IL': 'Israel',
+  'AE': 'UAE',
+  'SA': 'Saudi Arabia',
+  'EG': 'Egypt',
+  'ZA': 'South Africa',
+  'NG': 'Nigeria',
+  'KE': 'Kenya',
+  'TH': 'Thailand',
+  'VN': 'Vietnam',
+  'ID': 'Indonesia',
+  'MY': 'Malaysia',
+  'PH': 'Philippines',
+  'TW': 'Taiwan',
+  'HK': 'Hong Kong',
+  'NZ': 'New Zealand',
+  'AR': 'Argentina',
+  'CL': 'Chile',
+  'CO': 'Colombia',
+  'PE': 'Peru',
+  'VE': 'Venezuela',
+  'UA': 'Ukraine',
+  'RO': 'Romania',
+  'BG': 'Bulgaria',
+  'HR': 'Croatia',
+  'RS': 'Serbia',
+  'SK': 'Slovakia',
+  'SI': 'Slovenia',
+  'LT': 'Lithuania',
+  'LV': 'Latvia',
+  'EE': 'Estonia',
+  'LU': 'Luxembourg',
+  'MT': 'Malta',
+  'CY': 'Cyprus',
+  'IS': 'Iceland',
+};
+
+function getCountryName(countryCode: string): string {
+  return COUNTRY_NAMES[countryCode.toUpperCase()] || countryCode;
+}
+
 /**
  * Analytics service for optimized data retrieval and aggregation
  * Updated for unified content_blocks architecture
@@ -58,6 +134,7 @@ export class AnalyticsService {
         totalClicks,
         totalLinks,
         activeLinks,
+        uniqueVisitors,
         recentClicks,
         clickTrends,
         topLinks,
@@ -66,6 +143,7 @@ export class AnalyticsService {
         this.getTotalClicks(dateRange),
         this.getTotalLinks(),
         this.getActiveLinks(),
+        this.getUniqueVisitors(dateRange),
         this.getRecentClicks(20, dateRange),
         this.getClickTrends(dateRange),
         this.getTopLinks(10, dateRange),
@@ -76,6 +154,7 @@ export class AnalyticsService {
         totalClicks,
         totalLinks,
         activeLinks,
+        uniqueVisitors,
         recentClicks,
         clickTrends,
         topLinks,
@@ -147,6 +226,29 @@ export class AnalyticsService {
   }
 
   /**
+   * Get unique visitors count
+   */
+  static async getUniqueVisitors(dateRange?: DateRange): Promise<number> {
+    try {
+      const whereClause = dateRange 
+        ? and(
+            gte(clicks.timestamp, dateRange.start),
+            lte(clicks.timestamp, dateRange.end),
+          )
+        : undefined;
+
+      const result = await db
+        .select({ count: count(sql`DISTINCT ${clicks.ip_address}`) })
+        .from(clicks)
+        .where(whereClause);
+
+      return result[0]?.count || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
    * Get recent clicks with content block information
    */
   static async getRecentClicks(limit: number = 20, dateRange?: DateRange): Promise<ClickData[]> {
@@ -166,6 +268,8 @@ export class AnalyticsService {
           linkTitle: sql<string>`COALESCE(${contentBlocks.data}->>'title', ${contentBlocks.slug})`,
           referrer: clicks.referrer,
           country: clicks.country,
+          ipAddress: clicks.ip_address,
+          userAgent: clicks.user_agent,
         })
         .from(clicks)
         .innerJoin(contentBlocks, eq(clicks.block_id, contentBlocks.id))
@@ -180,6 +284,8 @@ export class AnalyticsService {
         linkTitle: row.linkTitle || row.linkSlug,
         referrer: row.referrer || undefined,
         country: row.country || undefined,
+        ipAddress: row.ipAddress || undefined,
+        userAgent: row.userAgent || undefined,
       }));
     } catch {
       return [];
@@ -281,7 +387,7 @@ export class AnalyticsService {
         .limit(20);
 
       return result.map(row => ({
-        country: row.country || 'Unknown',
+        country: getCountryName(row.country || 'Unknown'),
         clicks: row.clicks,
       }));
     } catch {
@@ -327,7 +433,8 @@ export class AnalyticsService {
         'Referrer',
         'User Agent',
         'IP Address',
-        'Country',
+        'Country Code',
+        'Country Name',
       ];
 
       const csvRows = [
@@ -341,6 +448,7 @@ export class AnalyticsService {
           `"${row.userAgent || ''}"`,
           `"${row.ipAddress || ''}"`,
           `"${row.country || ''}"`,
+          `"${row.country ? getCountryName(row.country) : ''}"`,
         ].join(',')),
       ];
 

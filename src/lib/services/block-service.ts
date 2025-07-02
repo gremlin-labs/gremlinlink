@@ -293,13 +293,72 @@ export class BlockService {
    */
   static async trackClick(blockId: string, metadata?: Record<string, unknown>): Promise<void> {
     try {
+      // Extract analytics data from metadata
+      const userAgent = metadata?.userAgent as string | undefined;
+      const referrer = metadata?.referrer as string | undefined;
+      const ipAddress = metadata?.ipAddress as string | undefined;
+      
+      // Basic country detection from IP (you can enhance this with a proper GeoIP service)
+      let country: string | undefined;
+      if (ipAddress) {
+        // For now, we'll leave country detection as a placeholder
+        // In production, you'd want to use a service like MaxMind GeoIP2 or similar
+        country = await this.detectCountryFromIP(ipAddress);
+      }
+
       await db.insert(clicks).values({
         block_id: blockId,
         timestamp: new Date(),
+        referrer: referrer,
+        user_agent: userAgent,
+        ip_address: ipAddress,
+        country: country,
         metadata: metadata || {},
       });
     } catch {
       // Silent error handling - analytics failures shouldn't break functionality
+    }
+  }
+
+  /**
+   * Detect country from IP address
+   * Using ipapi.co free service (1000 requests/day limit)
+   * In production, consider using MaxMind GeoIP2 or CloudFlare's CF-IPCountry header
+   */
+  private static async detectCountryFromIP(ipAddress: string): Promise<string | undefined> {
+    try {
+      // Skip localhost and private IPs
+      if (ipAddress === '127.0.0.1' || ipAddress === '::1' || 
+          ipAddress.startsWith('192.168.') || ipAddress.startsWith('10.') || 
+          ipAddress.startsWith('172.')) {
+        return undefined;
+      }
+
+      // Use ipapi.co free service with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
+      const response = await fetch(`https://ipapi.co/${ipAddress}/country/`, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'GremlinLink/1.0'
+        }
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const countryCode = await response.text();
+        // Return only if it's a valid 2-letter country code
+        if (countryCode && countryCode.length === 2 && /^[A-Z]{2}$/.test(countryCode)) {
+          return countryCode;
+        }
+      }
+
+      return undefined;
+    } catch {
+      // Silent error handling - don't fail analytics for GeoIP issues
+      return undefined;
     }
   }
 
