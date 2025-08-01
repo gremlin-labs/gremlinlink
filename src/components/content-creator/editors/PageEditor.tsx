@@ -8,10 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { GripVertical, Plus, X, Eye, Info, Palette } from 'lucide-react';
+import { GripVertical, Plus, X, Eye, Info, Palette, Type, FileText, Image as ImageIcon, Link2, Edit2 } from 'lucide-react';
 import { ContentBlock } from '@/lib/db/schema';
-import { ImageSelector, MediaAsset } from '@/components/ui/image-selector';
 import { Input } from '@/components/ui/input';
+import { v4 as uuidv4 } from 'uuid';
+import { HeadingEditor } from './HeadingEditor';
+import { TextEditor } from './TextEditor';
+import { ImageEditor } from '@/components/content-creator/editors/ImageEditor';
+import { RedirectEditor } from '@/components/content-creator/editors/RedirectEditor';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface PageEditorProps {
   block: ContentBlock;
@@ -24,8 +29,6 @@ interface PageData {
   customCSS?: string;
   showHeader?: boolean;
   backgroundColor?: string;
-  headerImage?: MediaAsset;
-  avatarImage?: MediaAsset;
 }
 
 interface ChildBlock {
@@ -34,17 +37,25 @@ interface ChildBlock {
   renderer: string;
   data: Record<string, unknown>;
   display_order: number;
+  is_published?: boolean;
+  type?: string;
+  parent_id?: string;
 }
 
+type BlockType = 'heading' | 'text' | 'image' | 'redirect' | 'existing';
+
 export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
-  const [availableBlocks, setAvailableBlocks] = useState<ContentBlock[]>([]);
   const [childBlocks, setChildBlocks] = useState<ChildBlock[]>([]);
   const [showBlockPicker, setShowBlockPicker] = useState(false);
+  const [selectedBlockType, setSelectedBlockType] = useState<BlockType | null>(null);
+  const [editingBlock, setEditingBlock] = useState<ChildBlock | null>(null);
   const [loading, setLoading] = useState(true);
+  const [availableBlocks, setAvailableBlocks] = useState<ContentBlock[]>([]);
+  const [showExistingPicker, setShowExistingPicker] = useState(false);
 
   const data = block.data as unknown as PageData;
 
-  const updateData = (key: keyof PageData, value: string | boolean | MediaAsset | null) => {
+  const updateData = (key: keyof PageData, value: string | boolean) => {
     onChange({
       data: { ...block.data, [key]: value },
     });
@@ -52,7 +63,6 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
 
   const loadChildBlocks = useCallback(async () => {
     try {
-      // Don't load blocks for temp/unsaved pages
       if (block.id === '00000000-0000-0000-0000-000000000000') {
         setChildBlocks([]);
         setLoading(false);
@@ -83,15 +93,102 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
     }
   }, []);
 
-  // Load child blocks and available blocks
   useEffect(() => {
     loadChildBlocks();
     loadAvailableBlocks();
   }, [loadChildBlocks, loadAvailableBlocks]);
 
-  const addBlock = async (blockId: string) => {
+  const createNewBlock = async (blockType: BlockType) => {
+    if (block.id === '00000000-0000-0000-0000-000000000000') {
+      alert('Please save the page first before adding blocks.');
+      return;
+    }
+
+    const tempId = `temp-${uuidv4()}`;
+    const newBlock: ChildBlock = {
+      id: tempId,
+      slug: `${block.slug}-${blockType}-${Date.now()}`,
+      renderer: blockType,
+      data: getDefaultDataForType(blockType),
+      display_order: childBlocks.length,
+      type: 'child',
+      parent_id: block.id,
+    };
+
+    setEditingBlock(newBlock);
+    setSelectedBlockType(blockType);
+  };
+
+  const getDefaultDataForType = (blockType: BlockType): Record<string, unknown> => {
+    switch (blockType) {
+      case 'heading':
+        return { text: '', level: 'h2', alignment: 'left' };
+      case 'text':
+        return { content: '', alignment: 'left', fontSize: 'normal' };
+      case 'image':
+        return { alt: '', clickAction: 'lightbox' };
+      case 'redirect':
+        return { url: '', cardTitle: '' };
+      default:
+        return {};
+    }
+  };
+
+  const saveNewBlock = async (blockData: ChildBlock) => {
     try {
-      // Handle temp blocks
+      const response = await fetch('/api/admin/blocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: blockData.slug,
+          renderer: blockData.renderer,
+          data: blockData.data,
+          type: 'child',
+          parent_id: block.id,
+          is_published: true,
+        }),
+      });
+
+      if (response.ok) {
+        const { block: newBlock } = await response.json();
+        
+        // Add to parent
+        const addResponse = await fetch(`/api/admin/blocks/${block.id}/children`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ blockId: newBlock.id }),
+        });
+
+        if (addResponse.ok) {
+          await loadChildBlocks();
+          setEditingBlock(null);
+          setSelectedBlockType(null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create block:', error);
+      alert('Failed to create block');
+    }
+  };
+
+  const updateChildBlock = async (childId: string, updates: Partial<ChildBlock>) => {
+    try {
+      const response = await fetch(`/api/admin/blocks/${childId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.ok) {
+        await loadChildBlocks();
+      }
+    } catch {
+      // Error handled silently
+    }
+  };
+
+  const addExistingBlock = async (blockId: string) => {
+    try {
       if (block.id === '00000000-0000-0000-0000-000000000000') {
         alert('Please save the page first before adding blocks.');
         return;
@@ -105,10 +202,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
 
       if (response.ok) {
         await loadChildBlocks();
-        setShowBlockPicker(false);
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to add block');
+        setShowExistingPicker(false);
       }
     } catch {
       alert('Failed to add block');
@@ -136,10 +230,8 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
 
-    // Update local state immediately for better UX
     setChildBlocks(items);
 
-    // Update server
     try {
       await fetch(`/api/admin/blocks/${block.id}/children/order`, {
         method: 'PUT',
@@ -149,7 +241,6 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
         }),
       });
     } catch {
-      // Revert on error
       await loadChildBlocks();
     }
   };
@@ -158,14 +249,13 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
     switch (block.renderer) {
       case 'redirect':
         return (block.data as { cardTitle?: string; url?: string }).cardTitle || 
-               extractDomain((block.data as { url?: string }).url || '') || 'Redirect';
-      case 'article':
-        return (block.data as { title?: string }).title || 'Article';
+               extractDomain((block.data as { url?: string }).url || '') || 'Link';
       case 'image':
-        return (block.data as { alt?: string; image?: { filename?: string } }).alt || 
-               (block.data as { image?: { filename?: string } }).image?.filename || 'Image';
-      case 'gallery':
-        return `Gallery (${((block.data as { images?: unknown[] }).images?.length || 0)} images)`;
+        const imageData = block.data as { alt?: string; image?: { filename?: string }; isHeaderImage?: boolean; isProfileImage?: boolean };
+        let title = imageData.alt || imageData.image?.filename || 'Image';
+        if (imageData.isHeaderImage) title += ' (Header)';
+        if (imageData.isProfileImage) title += ' (Profile)';
+        return title;
       case 'heading':
         return (block.data as { text?: string }).text || 'Heading';
       case 'text':
@@ -185,12 +275,19 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
   };
 
   const BlockPreview: React.FC<{ block: ChildBlock }> = ({ block }) => {
+    const imageData = block.data as { 
+      image?: { thumbnail_url?: string }; 
+      isHeaderImage?: boolean; 
+      isProfileImage?: boolean; 
+      caption?: string;
+    };
+
     switch (block.renderer) {
       case 'redirect':
         return (
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded">
             <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center text-white text-xs">
-              →
+              <Link2 className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-medium truncate">{getBlockTitle(block)}</div>
@@ -198,24 +295,12 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
             </div>
           </div>
         );
-      case 'article':
-        return (
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded">
-            <div className="w-8 h-8 bg-green-500 rounded flex items-center justify-center text-white text-xs">
-              A
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium truncate">{getBlockTitle(block)}</div>
-              <div className="text-sm text-muted-foreground truncate">{(block.data as { excerpt?: string }).excerpt}</div>
-            </div>
-          </div>
-        );
       case 'image':
         return (
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded">
-            {(block.data as { image?: { thumbnail_url?: string } }).image?.thumbnail_url ? (
+            {imageData.image?.thumbnail_url ? (
               <Image 
-                src={(block.data as { image: { thumbnail_url: string } }).image.thumbnail_url} 
+                src={imageData.image.thumbnail_url} 
                 alt="" 
                 width={32}
                 height={32}
@@ -223,12 +308,16 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
               />
             ) : (
               <div className="w-8 h-8 bg-purple-500 rounded flex items-center justify-center text-white text-xs">
-                📷
+                <ImageIcon className="w-4 h-4" />
               </div>
             )}
             <div className="flex-1 min-w-0">
               <div className="font-medium truncate">{getBlockTitle(block)}</div>
-              <div className="text-sm text-muted-foreground truncate">{(block.data as { caption?: string }).caption}</div>
+              <div className="text-sm text-muted-foreground">
+                {imageData.isHeaderImage && <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded text-xs mr-2">Header</span>}
+                {imageData.isProfileImage && <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">Profile</span>}
+                {imageData.caption && <span className="truncate">{imageData.caption}</span>}
+              </div>
             </div>
           </div>
         );
@@ -326,6 +415,14 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
                                   <Button
                                     variant="ghost"
                                     size="sm"
+                                    onClick={() => window.open(`/admin/content/${childBlock.id}/edit`, '_blank')}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => window.open(`/${childBlock.slug}`, '_blank')}
                                     className="h-8 w-8 p-0"
                                   >
@@ -363,18 +460,20 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
                     You need to save this page before you can add content blocks to it.
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Click &quot;Save Draft&quot; or &quot;Publish&quot; below to save the page.
+                    Click &quot;Save&quot; below to save the page.
                   </p>
                 </div>
               ) : (
-                <Button 
-                  onClick={() => setShowBlockPicker(true)}
-                  className="w-full"
-                  variant="outline"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Content Block
-                </Button>
+                <div className="mt-4 space-y-2">
+                  <Button 
+                    onClick={() => setShowBlockPicker(true)}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Content Block
+                  </Button>
+                </div>
               )}
             </>
           )}
@@ -390,7 +489,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
             <Info className="w-4 h-4 text-muted-foreground" />
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pt-6">
           <div>
             <Label htmlFor="layout" className="text-sm font-medium mb-2 block">Layout</Label>
             <Select
@@ -473,29 +572,6 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
             </p>
           </div>
 
-          <div>
-            <Label className="text-sm font-medium mb-2 block">Page Header Image</Label>
-            <ImageSelector
-              value={data.headerImage || null}
-              onChange={(image) => updateData('headerImage', image)}
-              label=""
-              helpText="Optional hero image displayed at the top of the page"
-              recommendedSize={{ width: 1920, height: 480 }}
-            />
-          </div>
-
-          <div>
-            <Label className="text-sm font-medium mb-2 block">Page Avatar Image</Label>
-            <ImageSelector
-              value={data.avatarImage || null}
-              onChange={(image) => updateData('avatarImage', image)}
-              label=""
-              helpText="Optional avatar or logo image for the page"
-              recommendedSize={{ width: 200, height: 200 }}
-              aspectRatio={1}
-            />
-          </div>
-
           <div className="flex items-center space-x-2">
             <Checkbox
               id="showHeader"
@@ -527,10 +603,10 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
         </CardContent>
       </Card>
 
-      {/* Block Picker Modal */}
+      {/* Block Type Picker Modal */}
       {showBlockPicker && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-4xl max-h-[80vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-2xl">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 Add Content Block
@@ -543,13 +619,116 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
                 </Button>
               </CardTitle>
             </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] border-2 hover:border-primary"
+                  onClick={() => {
+                    setShowBlockPicker(false);
+                    createNewBlock('heading');
+                  }}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center text-white mx-auto mb-3">
+                      <Type className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-semibold mb-1">Heading</h3>
+                    <p className="text-sm text-muted-foreground">Add a title or section header</p>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] border-2 hover:border-primary"
+                  onClick={() => {
+                    setShowBlockPicker(false);
+                    createNewBlock('text');
+                  }}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center text-white mx-auto mb-3">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-semibold mb-1">Text</h3>
+                    <p className="text-sm text-muted-foreground">Add a paragraph or bio text</p>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] border-2 hover:border-primary"
+                  onClick={() => {
+                    setShowBlockPicker(false);
+                    createNewBlock('image');
+                  }}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center text-white mx-auto mb-3">
+                      <ImageIcon className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-semibold mb-1">Image</h3>
+                    <p className="text-sm text-muted-foreground">Add an image anywhere on the page</p>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] border-2 hover:border-primary"
+                  onClick={() => {
+                    setShowBlockPicker(false);
+                    createNewBlock('redirect');
+                  }}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white mx-auto mb-3">
+                      <Link2 className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-semibold mb-1">Link</h3>
+                    <p className="text-sm text-muted-foreground">Add a link to external content</p>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] border-2 hover:border-primary col-span-full"
+                  onClick={() => {
+                    setShowBlockPicker(false);
+                    setShowExistingPicker(true);
+                  }}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="w-12 h-12 bg-gray-500 rounded-lg flex items-center justify-center text-white mx-auto mb-3">
+                      <Plus className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-semibold mb-1">Add Existing Block</h3>
+                    <p className="text-sm text-muted-foreground">Choose from your existing content blocks</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Existing Block Picker Modal */}
+      {showExistingPicker && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-4xl max-h-[80vh] overflow-hidden">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Add Existing Block
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowExistingPicker(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
             <CardContent className="overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {availableBlocks.map(availableBlock => (
                   <Card
                     key={availableBlock.id}
                     className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => addBlock(availableBlock.id)}
+                    onClick={() => addExistingBlock(availableBlock.id)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
@@ -580,6 +759,85 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
           </Card>
         </div>
       )}
+
+      {/* Block Editor Dialog */}
+      {editingBlock && selectedBlockType && (
+        <Dialog open={true} onOpenChange={() => {
+          setEditingBlock(null);
+          setSelectedBlockType(null);
+        }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Create {selectedBlockType === 'redirect' ? 'Link' : selectedBlockType.charAt(0).toUpperCase() + selectedBlockType.slice(1)} Block
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              {selectedBlockType === 'heading' && (
+                <HeadingEditor
+                  block={editingBlock as ContentBlock}
+                  onChange={(updates) => {
+                    setEditingBlock({
+                      ...editingBlock,
+                      ...updates,
+                    });
+                  }}
+                />
+              )}
+              {selectedBlockType === 'text' && (
+                <TextEditor
+                  block={editingBlock as ContentBlock}
+                  onChange={(updates) => {
+                    setEditingBlock({
+                      ...editingBlock,
+                      ...updates,
+                    });
+                  }}
+                />
+              )}
+              {selectedBlockType === 'image' && (
+                <ImageEditor
+                  block={editingBlock as ContentBlock}
+                  onChange={(updates) => {
+                    setEditingBlock({
+                      ...editingBlock,
+                      ...updates,
+                    });
+                  }}
+                />
+              )}
+              {selectedBlockType === 'redirect' && (
+                <RedirectEditor
+                  block={editingBlock as ContentBlock}
+                  onChange={(updates) => {
+                    setEditingBlock({
+                      ...editingBlock,
+                      ...updates,
+                    });
+                  }}
+                />
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditingBlock(null);
+                  setSelectedBlockType(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => saveNewBlock(editingBlock)}
+                disabled={!editingBlock.data || Object.keys(editingBlock.data).length === 0}
+              >
+                Create Block
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
-}; 
+};
