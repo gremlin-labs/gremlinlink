@@ -4,6 +4,7 @@ import { mediaAssets } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
+import { existsSync } from 'fs';
 
 export async function GET(
   request: NextRequest,
@@ -26,8 +27,23 @@ export async function GET(
       );
     }
 
-    // Read file from storage
+    // Check if this is a spaces URL (external URL)
+    if (asset.storage_path.startsWith('http://') || asset.storage_path.startsWith('https://')) {
+      // Redirect to the actual URL
+      return NextResponse.redirect(asset.storage_path);
+    }
+
+    // Otherwise, serve from local storage
     const filePath = join(process.cwd(), 'public', asset.storage_path);
+    
+    // Check if file exists
+    if (!existsSync(filePath)) {
+      return NextResponse.json(
+        { error: 'File not found' },
+        { status: 404 }
+      );
+    }
+
     const fileBuffer = await readFile(filePath);
 
     // Return file with appropriate headers

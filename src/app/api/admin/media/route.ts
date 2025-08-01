@@ -17,11 +17,18 @@ export async function GET(request: NextRequest) {
       .offset(offset);
 
     // Transform assets to include computed URLs
-    const transformedAssets = assets.map(asset => ({
-      ...asset,
-      url: `/api/media/${asset.id}`, // Serve through API for access control
-      thumbnail_url: asset.thumbnail_path ? `/api/media/${asset.id}/thumbnail` : `/api/media/${asset.id}`,
-    }));
+    const transformedAssets = assets.map(asset => {
+      // Check if using external storage (spaces)
+      const isExternalUrl = asset.storage_path?.startsWith('http://') || asset.storage_path?.startsWith('https://');
+      
+      return {
+        ...asset,
+        url: isExternalUrl ? asset.storage_path : `/api/media/${asset.id}`,
+        thumbnail_url: asset.thumbnail_path 
+          ? (asset.thumbnail_path.startsWith('http') ? asset.thumbnail_path : `/api/media/${asset.id}/thumbnail`)
+          : (isExternalUrl ? asset.storage_path : `/api/media/${asset.id}`),
+      };
+    });
 
     return NextResponse.json({
       assets: transformedAssets,
