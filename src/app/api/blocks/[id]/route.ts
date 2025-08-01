@@ -10,8 +10,8 @@ import { z } from 'zod';
 
 const updateBlockSchema = z.object({
   renderer: z.string().min(1).max(50).optional(),
-  data: z.record(z.any()).optional(),
-  metadata: z.record(z.any()).optional(),
+  data: z.record(z.string(), z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   parent_id: z.string().uuid().optional(),
   display_order: z.number().int().min(0).optional(),
   is_published: z.boolean().optional(),
@@ -93,7 +93,7 @@ export async function PUT(
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: 'Invalid request data', details: error.errors },
+        { success: false, error: 'Invalid request data', details: error.issues },
         { status: 400 }
       );
     }

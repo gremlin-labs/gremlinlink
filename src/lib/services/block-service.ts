@@ -31,8 +31,8 @@ const purify = DOMPurify(window as any);
 export const createBlockSchema = z.object({
   slug: z.string().min(3).max(50).regex(/^[a-z0-9-_]+$/, 'Slug must contain only lowercase letters, numbers, hyphens, and underscores'),
   renderer: z.string().min(1).max(50),
-  data: z.record(z.unknown()),
-  metadata: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   parent_id: z.string().uuid().optional(),
   display_order: z.number().int().min(0).optional(),
   is_published: z.boolean().optional(),

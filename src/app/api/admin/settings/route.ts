@@ -95,7 +95,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Invalid settings data',
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 }
       );

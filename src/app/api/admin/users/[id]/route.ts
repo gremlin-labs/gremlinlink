@@ -64,7 +64,7 @@ export async function PUT(
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid user data', details: error.errors },
+        { error: 'Invalid user data', details: error.issues },
         { status: 400 }
       );
     }
@@ -132,7 +132,7 @@ export async function PATCH(
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid user data', details: error.errors },
+        { error: 'Invalid user data', details: error.issues },
         { status: 400 }
       );
     }

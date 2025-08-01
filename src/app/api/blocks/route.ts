@@ -19,8 +19,8 @@ import { z } from 'zod';
 const createBlockSchema = z.object({
   slug: z.string().min(3).max(50),
   renderer: z.string().min(1).max(50),
-  data: z.record(z.any()),
-  metadata: z.record(z.any()).optional(),
+  data: z.record(z.string(), z.any()),
+  metadata: z.record(z.string(), z.any()).optional(),
   parent_id: z.string().uuid().optional(),
   display_order: z.number().int().min(0).optional(),
   is_published: z.boolean().optional(),
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: 'Invalid query parameters', details: error.errors },
+        { success: false, error: 'Invalid query parameters', details: error.issues },
         { status: 400 }
       );
     }
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: 'Invalid request data', details: error.errors },
+        { success: false, error: 'Invalid request data', details: error.issues },
         { status: 400 }
       );
     }
@@ -232,7 +232,7 @@ export async function PATCH(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: 'Invalid request data', details: error.errors },
+        { success: false, error: 'Invalid request data', details: error.issues },
         { status: 400 }
       );
     }

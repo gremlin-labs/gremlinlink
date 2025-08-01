@@ -21,7 +21,7 @@ export const addObjectToPageSchema = z.object({
   object_id: z.string().uuid(),
   display_order: z.number().int().min(0),
   layout_size: z.enum(['small', 'medium', 'large', 'full']).default('medium'),
-  custom_styling: z.record(z.unknown()).optional(),
+  custom_styling: z.record(z.string(), z.unknown()).optional(),
 });
 
 // Type definitions

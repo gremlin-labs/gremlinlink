@@ -11,6 +11,7 @@ export interface AnalyticsData {
   clickTrends: TrendData[];
   topLinks: TopLinkData[];
   clicksByCountry: CountryData[];
+  topLinksForChart: TopLinkData[];
 }
 
 export interface ClickData {
@@ -27,6 +28,7 @@ export interface ClickData {
 export interface TrendData {
   date: string;
   clicks: number;
+  [key: string]: number | string; // For individual link data
 }
 
 export interface TopLinkData {
@@ -139,6 +141,7 @@ export class AnalyticsService {
         clickTrends,
         topLinks,
         clicksByCountry,
+        topLinksForChart,
       ] = await Promise.all([
         this.getTotalClicks(dateRange),
         this.getTotalLinks(),
@@ -148,6 +151,7 @@ export class AnalyticsService {
         this.getClickTrends(dateRange),
         this.getTopLinks(10, dateRange),
         this.getClicksByCountry(dateRange),
+        this.getTopLinks(5, dateRange), // For chart rendering
       ]);
 
       return {
@@ -159,6 +163,7 @@ export class AnalyticsService {
         clickTrends,
         topLinks,
         clicksByCountry,
+        topLinksForChart,
       };
     } catch {
       throw new Error('Failed to load analytics dashboard');
@@ -293,7 +298,7 @@ export class AnalyticsService {
   }
 
   /**
-   * Get click trends over time
+   * Get click trends over time with individual link breakdown
    */
   static async getClickTrends(dateRange?: DateRange): Promise<TrendData[]> {
     try {
@@ -301,7 +306,8 @@ export class AnalyticsService {
       const endDate = dateRange?.end || new Date();
       const startDate = dateRange?.start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      const result = await db
+      // Get overall clicks per day
+      const overallResult = await db
         .select({
           date: sql<string>`DATE(${clicks.timestamp})`,
           clicks: count(),
@@ -316,7 +322,77 @@ export class AnalyticsService {
         .groupBy(sql`DATE(${clicks.timestamp})`)
         .orderBy(sql`DATE(${clicks.timestamp})`);
 
-      return result;
+      // Get clicks per day per link (top 5 links only to avoid clutter)
+      const linkResult = await db
+        .select({
+          date: sql<string>`DATE(${clicks.timestamp})`,
+          linkSlug: contentBlocks.slug,
+          linkTitle: sql<string>`COALESCE(${contentBlocks.data}->>'title', ${contentBlocks.slug})`,
+          clicks: count(),
+        })
+        .from(clicks)
+        .innerJoin(contentBlocks, eq(clicks.block_id, contentBlocks.id))
+        .where(
+          and(
+            gte(clicks.timestamp, startDate),
+            lte(clicks.timestamp, endDate),
+          )
+        )
+        .groupBy(sql`DATE(${clicks.timestamp})`, contentBlocks.id, contentBlocks.slug, contentBlocks.data)
+        .orderBy(sql`DATE(${clicks.timestamp})`, desc(count()));
+
+      // Get top 5 links overall
+      const topLinksForPeriod = await db
+        .select({
+          linkSlug: contentBlocks.slug,
+          linkTitle: sql<string>`COALESCE(${contentBlocks.data}->>'title', ${contentBlocks.slug})`,
+          totalClicks: count(),
+        })
+        .from(clicks)
+        .innerJoin(contentBlocks, eq(clicks.block_id, contentBlocks.id))
+        .where(
+          and(
+            gte(clicks.timestamp, startDate),
+            lte(clicks.timestamp, endDate),
+          )
+        )
+        .groupBy(contentBlocks.id, contentBlocks.slug, contentBlocks.data)
+        .orderBy(desc(count()))
+        .limit(5);
+
+      // Create a map of dates to trend data
+      const trendMap = new Map<string, TrendData>();
+      
+      // Initialize with overall clicks
+      overallResult.forEach(row => {
+        trendMap.set(row.date, {
+          date: row.date,
+          clicks: row.clicks,
+        });
+      });
+
+      // Add individual link data for top links only
+      linkResult.forEach(row => {
+        const isTopLink = topLinksForPeriod.some(topLink => topLink.linkSlug === row.linkSlug);
+        if (isTopLink) {
+          const existing = trendMap.get(row.date);
+          if (existing) {
+            existing[row.linkSlug] = row.clicks;
+          }
+        }
+      });
+
+      // Ensure all dates have data for all top links (fill with 0)
+      const topLinkSlugs = topLinksForPeriod.map(link => link.linkSlug);
+      trendMap.forEach(trend => {
+        topLinkSlugs.forEach(slug => {
+          if (!(slug in trend)) {
+            trend[slug] = 0;
+          }
+        });
+      });
+
+      return Array.from(trendMap.values()).sort((a, b) => a.date.localeCompare(b.date));
     } catch {
       return [];
     }
