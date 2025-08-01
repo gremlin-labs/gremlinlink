@@ -25,8 +25,8 @@ const CreateBlockSchema = z.object({
   type: z.enum(['root', 'child']).default('root'),
   parent_id: z.string().uuid().optional(),
   renderer: z.string().min(1).max(50),
-  data: z.record(z.any()).default({}),
-  metadata: z.record(z.any()).default({}),
+  data: z.record(z.string(), z.any()).default({}),
+  metadata: z.record(z.string(), z.any()).default({}),
   display_order: z.number().int().default(0),
   is_published: z.boolean().default(true),
   tags: z.array(z.string()).optional(), // Tag IDs
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Validation error', details: error.issues },
         { status: 400 }
       );
     }

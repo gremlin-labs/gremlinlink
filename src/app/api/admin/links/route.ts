@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Validate input
     const parsed = createLinkSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors }, { status: 400 });
+      return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
     }
     
     const { slug, target_url, title, description, is_default, icon, image_url } = parsed.data;

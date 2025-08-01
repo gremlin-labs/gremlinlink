@@ -16,7 +16,7 @@ export const contentBlockSchema = z.object({
   id: z.string(),
   type: z.enum(['paragraph', 'heading', 'list', 'quote', 'code', 'image', 'link']),
   content: z.unknown(), // Flexible content based on block type
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 // Post creation and update schemas

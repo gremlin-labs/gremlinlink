@@ -36,6 +36,7 @@ interface AnalyticsData {
   clickTrends: TrendData[];
   topLinks: TopLinkData[];
   clicksByCountry: CountryData[];
+  topLinksForChart?: TopLinkData[];
   metadata: {
     queryTime: number;
     dateRange: { start: string; end: string } | null;
@@ -57,6 +58,7 @@ interface ClickData {
 interface TrendData {
   date: string;
   clicks: number;
+  [key: string]: number | string; // For individual link data
 }
 
 interface TopLinkData {
@@ -275,9 +277,22 @@ export default function AnalyticsDashboard() {
                   type="monotone" 
                   dataKey="clicks" 
                   stroke="#1FCC00" 
-                  strokeWidth={2}
+                  strokeWidth={3}
                   dot={{ fill: '#1FCC00', strokeWidth: 2 }}
+                  name="Total Clicks"
                 />
+                {/* Individual lines for top links */}
+                {data.topLinksForChart?.map((link, index) => (
+                  <Line
+                    key={link.slug}
+                    type="monotone"
+                    dataKey={link.slug}
+                    stroke={COLORS[index % COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ fill: COLORS[index % COLORS.length], strokeWidth: 1 }}
+                    name={link.title || link.slug}
+                  />
+                ))}
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -295,7 +310,11 @@ export default function AnalyticsDashboard() {
                 <XAxis dataKey="slug" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="clicks" fill="#1FCC00" />
+                <Bar dataKey="clicks">
+                  {data.topLinks?.slice(0, 5).map((_entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -314,10 +333,11 @@ export default function AnalyticsDashboard() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                  label={({ country, percent }) => `${country} ${percent ? (percent * 100).toFixed(0) : 0}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="clicks"
+                  nameKey="country"
                 >
                   {data.clicksByCountry?.slice(0, 6).map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

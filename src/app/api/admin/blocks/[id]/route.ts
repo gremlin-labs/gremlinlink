@@ -17,8 +17,8 @@ const UpdateBlockSchema = z.object({
   type: z.enum(['root', 'child']).optional(),
   parent_id: z.string().uuid().nullable().optional(),
   renderer: z.string().min(1).max(50).optional(),
-  data: z.record(z.any()).optional(),
-  metadata: z.record(z.any()).optional(),
+  data: z.record(z.string(), z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   display_order: z.number().int().optional(),
   is_published: z.boolean().optional(),
   tags: z.array(z.string()).optional(), // Tag IDs
@@ -153,7 +153,7 @@ export async function PUT(
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Validation error', details: error.issues },
         { status: 400 }
       );
     }
