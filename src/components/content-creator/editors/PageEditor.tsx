@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { GripVertical, Plus, X, Eye, Info } from 'lucide-react';
+import { GripVertical, Plus, X, Eye, Info, Palette } from 'lucide-react';
 import { ContentBlock } from '@/lib/db/schema';
+import { ImageSelector, MediaAsset } from '@/components/ui/image-selector';
+import { Input } from '@/components/ui/input';
 
 interface PageEditorProps {
   block: ContentBlock;
@@ -21,6 +23,9 @@ interface PageData {
   theme: 'light' | 'dark' | 'auto';
   customCSS?: string;
   showHeader?: boolean;
+  backgroundColor?: string;
+  headerImage?: MediaAsset;
+  avatarImage?: MediaAsset;
 }
 
 interface ChildBlock {
@@ -39,7 +44,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
 
   const data = block.data as unknown as PageData;
 
-  const updateData = (key: keyof PageData, value: string | boolean) => {
+  const updateData = (key: keyof PageData, value: string | boolean | MediaAsset | null) => {
     onChange({
       data: { ...block.data, [key]: value },
     });
@@ -161,6 +166,11 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
                (block.data as { image?: { filename?: string } }).image?.filename || 'Image';
       case 'gallery':
         return `Gallery (${((block.data as { images?: unknown[] }).images?.length || 0)} images)`;
+      case 'heading':
+        return (block.data as { text?: string }).text || 'Heading';
+      case 'text':
+        const content = (block.data as { content?: string }).content || '';
+        return content.substring(0, 50) + (content.length > 50 ? '...' : '') || 'Text Block';
       default:
         return block.renderer;
     }
@@ -222,6 +232,34 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
             </div>
           </div>
         );
+      case 'heading':
+        return (
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded">
+            <div className="w-8 h-8 bg-indigo-500 rounded flex items-center justify-center text-white text-xs font-bold">
+              H
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium truncate">{getBlockTitle(block)}</div>
+              <div className="text-sm text-muted-foreground">
+                {(block.data as { level?: string }).level || 'h2'} • {(block.data as { alignment?: string }).alignment || 'left'}
+              </div>
+            </div>
+          </div>
+        );
+      case 'text':
+        return (
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded">
+            <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center text-white text-xs">
+              T
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium truncate">{getBlockTitle(block)}</div>
+              <div className="text-sm text-muted-foreground">
+                {(block.data as { fontSize?: string }).fontSize || 'normal'} • {(block.data as { alignment?: string }).alignment || 'left'}
+              </div>
+            </div>
+          </div>
+        );
       default:
         return (
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded">
@@ -240,9 +278,10 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
   return (
     <div className="space-y-6">
       {/* Content Blocks */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-4">
+      <Card className="border-0 shadow-sm bg-card/50 backdrop-blur">
+        <CardHeader className="pb-4 border-b">
           <CardTitle className="text-lg flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-primary"></div>
             Content Blocks
             <Info className="w-4 h-4 text-muted-foreground" />
           </CardTitle>
@@ -268,37 +307,39 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
                             <div
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              className="border rounded-lg bg-card"
+                              className="border border-border/50 rounded-lg bg-card hover:shadow-md transition-all duration-200 overflow-hidden group"
                             >
-                              <div className="flex items-center p-3 border-b">
+                              <div className="flex items-center p-3 bg-muted/20">
                                 <div 
                                   {...provided.dragHandleProps}
-                                  className="mr-3 cursor-grab active:cursor-grabbing"
+                                  className="mr-3 cursor-grab active:cursor-grabbing opacity-50 group-hover:opacity-100 transition-opacity"
                                 >
                                   <GripVertical className="w-4 h-4 text-muted-foreground" />
                                 </div>
-                                <span className="px-2 py-1 bg-muted rounded text-xs font-medium">
+                                <span className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium">
                                   {childBlock.renderer}
                                 </span>
                                 <span className="flex-1 ml-3 font-medium truncate">
                                   {getBlockTitle(childBlock)}
                                 </span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => window.open(`/${childBlock.slug}`, '_blank')}
-                                  className="mr-2"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeBlock(childBlock.id)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => window.open(`/${childBlock.slug}`, '_blank')}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeBlock(childBlock.id)}
+                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </div>
                               
                               <div className="p-3">
@@ -341,9 +382,10 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
       </Card>
 
       {/* Page Settings */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-4">
+      <Card className="border-0 shadow-sm bg-card/50 backdrop-blur">
+        <CardHeader className="pb-4 border-b">
           <CardTitle className="text-lg flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-primary"></div>
             Page Settings
             <Info className="w-4 h-4 text-muted-foreground" />
           </CardTitle>
@@ -381,6 +423,77 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
                 <SelectItem value="auto">Auto (System)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="backgroundColor" className="text-sm font-medium mb-2 block">
+              Background Color
+            </Label>
+            <div className="flex gap-2">
+              <div className="flex items-center gap-2 flex-1">
+                <div 
+                  className="w-10 h-10 rounded border border-input cursor-pointer"
+                  style={{ backgroundColor: data.backgroundColor || '#ffffff' }}
+                  onClick={() => document.getElementById('colorPicker')?.click()}
+                >
+                  {!data.backgroundColor && (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Palette className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                <Input
+                  id="backgroundColor"
+                  type="text"
+                  value={data.backgroundColor || ''}
+                  onChange={(e) => updateData('backgroundColor', e.target.value)}
+                  placeholder="#ffffff or rgb(255,255,255)"
+                  className="flex-1"
+                />
+                <input
+                  id="colorPicker"
+                  type="color"
+                  value={data.backgroundColor || '#ffffff'}
+                  onChange={(e) => updateData('backgroundColor', e.target.value)}
+                  className="sr-only"
+                />
+              </div>
+              {data.backgroundColor && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => updateData('backgroundColor', '')}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Set a custom background color for this page
+            </p>
+          </div>
+
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Page Header Image</Label>
+            <ImageSelector
+              value={data.headerImage || null}
+              onChange={(image) => updateData('headerImage', image)}
+              label=""
+              helpText="Optional hero image displayed at the top of the page"
+              recommendedSize={{ width: 1920, height: 480 }}
+            />
+          </div>
+
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Page Avatar Image</Label>
+            <ImageSelector
+              value={data.avatarImage || null}
+              onChange={(image) => updateData('avatarImage', image)}
+              label=""
+              helpText="Optional avatar or logo image for the page"
+              recommendedSize={{ width: 200, height: 200 }}
+              aspectRatio={1}
+            />
           </div>
 
           <div className="flex items-center space-x-2">

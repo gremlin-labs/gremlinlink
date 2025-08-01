@@ -19,6 +19,8 @@ import { PageEditor } from '@/components/content-creator/editors/PageEditor';
 import { RedirectEditor } from '@/components/content-creator/editors/RedirectEditor';
 import { ArticleEditor } from '@/components/content-creator/editors/ArticleEditor';
 import { ImageEditor } from '@/components/content-creator/editors/ImageEditor';
+import { HeadingEditor } from '@/components/content-creator/editors/HeadingEditor';
+import { TextEditor } from '@/components/content-creator/editors/TextEditor';
 
 /**
  * UNIVERSAL BLOCK EDITOR
@@ -156,6 +158,8 @@ export default function BlockEditPage() {
       card: 'Card',
       gallery: 'Gallery',
       page: 'Page',
+      heading: 'Heading',
+      text: 'Text Block',
     };
     return names[renderer] || renderer;
   };
@@ -373,6 +377,62 @@ export default function BlockEditPage() {
           />
         );
         
+      case 'heading':
+        const headingBlock: ContentBlock = {
+          id: blockId === 'new' ? '00000000-0000-0000-0000-000000000000' : blockId,
+          slug: formData.slug,
+          type: 'root',
+          parent_id: undefined,
+          renderer: 'heading',
+          data: formData.data || {},
+          metadata: formData.metadata || {},
+          display_order: 0,
+          is_published: formData.is_published,
+          is_landing_block: false,
+          is_private: false,
+          created_at: new Date(),
+          updated_at: new Date(),
+        };
+        
+        return (
+          <div className="space-y-6">
+            <HeadingEditor block={headingBlock} onChange={(updates) => {
+              updateFormData({
+                data: updates.data || formData.data,
+                metadata: updates.metadata || formData.metadata,
+              });
+            }} />
+          </div>
+        );
+        
+      case 'text':
+        const textBlock: ContentBlock = {
+          id: blockId === 'new' ? '00000000-0000-0000-0000-000000000000' : blockId,
+          slug: formData.slug,
+          type: 'root',
+          parent_id: undefined,
+          renderer: 'text',
+          data: formData.data || {},
+          metadata: formData.metadata || {},
+          display_order: 0,
+          is_published: formData.is_published,
+          is_landing_block: false,
+          is_private: false,
+          created_at: new Date(),
+          updated_at: new Date(),
+        };
+        
+        return (
+          <div className="space-y-6">
+            <TextEditor block={textBlock} onChange={(updates) => {
+              updateFormData({
+                data: updates.data || formData.data,
+                metadata: updates.metadata || formData.metadata,
+              });
+            }} />
+          </div>
+        );
+        
       default:
         return (
           <div className="text-center py-8 text-muted-foreground">
@@ -422,18 +482,28 @@ export default function BlockEditPage() {
             </div>
           </div>
           
+          {/* Status Bar */}
+          {!isNew && (
+            <div className="bg-muted/30 backdrop-blur border rounded-lg p-3 mb-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${formData.is_published ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
+                  <span className="text-sm font-medium">
+                    {formData.is_published ? 'Published' : 'Draft'}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {formData.is_published ? 'Visible to the public' : 'Only visible to you'}
+                  </span>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {getContentTypeName(formData.renderer)} • /{formData.slug}
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Action Bar - Responsive button layout */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center sm:justify-between">
-            {/* Status Indicator - Move to top on mobile */}
-            {!isNew && (
-              <div className="flex items-center gap-2 text-sm order-2 sm:order-1">
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${formData.is_published ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-                <span className="text-muted-foreground">
-                  {formData.is_published ? 'Published' : 'Draft'} • 
-                  {formData.is_published ? ' Visible to the public' : ' Only visible to you'}
-                </span>
-              </div>
-            )}
             
             {/* Action buttons - Stack on mobile, row on desktop */}
             <div className="flex flex-col sm:flex-row gap-2 order-1 sm:order-2">
@@ -456,7 +526,7 @@ export default function BlockEditPage() {
                   onClick={handleSave}
                   disabled={createMutation.isPending || updateMutation.isPending}
                   size="sm"
-                  className="h-9 flex-1 sm:flex-none"
+                  className="h-9 flex-1 sm:flex-none bg-primary hover:bg-primary/90"
                 >
                   <Save className="w-4 h-4 sm:mr-2" />
                   <span>{isNew ? 'Create' : 'Save'}</span>
@@ -515,12 +585,16 @@ export default function BlockEditPage() {
         </div>
         
         {/* Main Content - Mobile-optimized spacing */}
-        <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-          {/* Basic Settings - Mobile-first card design */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6">
-              <CardTitle className="text-base sm:text-lg">Basic Settings</CardTitle>
-            </CardHeader>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+          {/* Left Column - Basic Settings */}
+          <div className="lg:col-span-1 space-y-4 sm:space-y-6">
+            <Card className="border-0 shadow-sm bg-card/50 backdrop-blur">
+              <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary"></div>
+                  Basic Settings
+                </CardTitle>
+              </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
               <div>
                 <Label htmlFor="slug" className="text-sm font-medium mb-2 block">URL Slug</Label>
@@ -557,21 +631,29 @@ export default function BlockEditPage() {
                     <SelectItem value="card">Card</SelectItem>
                     <SelectItem value="gallery">Gallery</SelectItem>
                     <SelectItem value="page">Page</SelectItem>
+                    <SelectItem value="heading">Heading</SelectItem>
+                    <SelectItem value="text">Text Block</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </CardContent>
           </Card>
+          </div>
           
-          {/* Content Configuration - Mobile-optimized */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6">
-              <CardTitle className="text-base sm:text-lg">Content</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 sm:px-6">
-              {renderRendererFields()}
-            </CardContent>
-          </Card>
+          {/* Right Column - Content Configuration */}
+          <div className="lg:col-span-2">
+            <Card className="border-0 shadow-sm bg-card/50 backdrop-blur h-full">
+              <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6 border-b">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary"></div>
+                  Content Configuration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 sm:px-6 py-6">
+                {renderRendererFields()}
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Delete Confirmation Dialog */}

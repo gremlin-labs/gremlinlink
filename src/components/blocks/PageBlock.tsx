@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { ContentBlock } from '@/lib/db/schema';
 import { BlockWithChildren } from '@/lib/services/block-service';
 import { cn } from '@/lib/utils';
@@ -10,6 +11,19 @@ interface PageData {
   theme?: 'light' | 'dark' | 'auto';
   customCSS?: string;
   showHeader?: boolean;
+  backgroundColor?: string;
+  headerImage?: {
+    url: string;
+    width?: number;
+    height?: number;
+    alt?: string;
+  };
+  avatarImage?: {
+    url: string;
+    width?: number;
+    height?: number;
+    alt?: string;
+  };
 }
 
 interface PageBlockProps {
@@ -50,17 +64,48 @@ export default function PageBlock({ block, mode = 'view' }: PageBlockProps) {
         )}
         
         {/* Page wrapper with theme and layout */}
-        <div className={cn('page-block min-h-screen', themeClass)}>
+        <div 
+          className={cn('page-block min-h-screen', themeClass)}
+          style={{ backgroundColor: data.backgroundColor || undefined }}
+        >
+          {/* Header Image */}
+          {data.headerImage && (
+            <div className="page-header-image relative w-full h-[300px] md:h-[400px] lg:h-[480px] overflow-hidden">
+              <Image
+                src={data.headerImage.url}
+                alt={data.headerImage.alt || 'Page header'}
+                fill
+                className="object-cover"
+                priority
+              />
+              {/* Gradient overlay for better text readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30" />
+            </div>
+          )}
+          
           <div className={cn('page-content py-8', layoutClass)}>
-            {(data.showHeader !== false) && (metadata.title || metadata.description) ? (
-              <div className="page-header mb-12">
+            {(data.showHeader !== false) && (metadata.title || metadata.description || data.avatarImage) ? (
+              <div className="page-header mb-12 text-center">
+                {/* Avatar Image */}
+                {data.avatarImage && (
+                  <div className="page-avatar mx-auto mb-6">
+                    <Image
+                      src={data.avatarImage.url}
+                      alt={data.avatarImage.alt || 'Page avatar'}
+                      width={120}
+                      height={120}
+                      className="rounded-full border-4 border-background shadow-lg"
+                    />
+                  </div>
+                )}
+                
                 {metadata.title ? (
                   <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
                     {String(metadata.title)}
                   </h1>
                 ) : null}
                 {metadata.description ? (
-                  <p className="text-xl text-muted-foreground max-w-3xl">
+                  <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                     {String(metadata.description)}
                   </p>
                 ) : null}

@@ -50,6 +50,16 @@ const PageBlock = dynamic(() => import('./PageBlock'), {
   ssr: false,
 });
 
+const HeadingBlock = dynamic(() => import('./HeadingBlock'), {
+  loading: () => <div className="animate-pulse bg-muted h-12 rounded" />,
+  ssr: false,
+});
+
+const TextBlock = dynamic(() => import('./TextBlock'), {
+  loading: () => <div className="animate-pulse bg-muted h-24 rounded" />,
+  ssr: false,
+});
+
 // Renderer registry for dynamic loading
 const BLOCK_RENDERERS = {
   redirect: RedirectBlock,
@@ -58,6 +68,8 @@ const BLOCK_RENDERERS = {
   card: CardBlock,
   gallery: GalleryBlock,
   page: PageBlock,
+  heading: HeadingBlock,
+  text: TextBlock,
 } as const;
 
 // Render modes
