@@ -26,6 +26,7 @@ interface RedirectData {
   cardDescription?: string;
   cardImage?: MediaAsset;
   icon?: string;
+  buttonLabel?: string;
 }
 
 export const RedirectEditor: React.FC<RedirectEditorProps> = ({ block, onChange }) => {
@@ -161,6 +162,20 @@ export const RedirectEditor: React.FC<RedirectEditorProps> = ({ block, onChange 
                   />
                   <p className="text-xs text-muted-foreground mt-2">
                     Used for card display and social media previews (150-160 characters recommended)
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="buttonLabel" className="block mb-2 text-sm font-medium">Button Label</Label>
+                  <Input
+                    id="buttonLabel"
+                    value={data.buttonLabel || ''}
+                    onChange={(e) => updateData('buttonLabel', e.target.value)}
+                    placeholder="Click here, Learn more, Visit site, etc."
+                    className="bg-input-contrast h-11 text-base"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Optional label displayed as a button on the link card
                   </p>
                 </div>
               </div>

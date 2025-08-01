@@ -19,7 +19,7 @@ interface ImageBlockProps {
   onDelete?: () => void;
 }
 
-interface ImageData {
+export interface ImageBlockData {
   // New structure (MediaAsset object)
   image?: {
     url: string;
@@ -35,12 +35,19 @@ interface ImageData {
   clickAction?: 'lightbox' | 'link' | 'none';
   linkUrl?: string;
   
+  // Special image flags
+  isHeaderImage?: boolean;
+  isProfileImage?: boolean;
+  imagePosition?: 'left' | 'center' | 'right';
+  
   // Legacy structure (direct URL) - for backward compatibility
   url?: string;
   alt_text?: string;
   width?: number;
   height?: number;
 }
+
+interface ImageData extends ImageBlockData {}
 
 export default function ImageBlock({ 
   block, 
