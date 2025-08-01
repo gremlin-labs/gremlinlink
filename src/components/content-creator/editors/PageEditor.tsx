@@ -171,6 +171,7 @@ export const PageEditor: React.FC<PageEditorProps> = ({ block, onChange }) => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const updateChildBlock = async (childId: string, updates: Partial<ChildBlock>) => {
     try {
       const response = await fetch(`/api/admin/blocks/${childId}`, {

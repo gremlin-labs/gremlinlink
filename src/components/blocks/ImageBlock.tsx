@@ -47,7 +47,7 @@ export interface ImageBlockData {
   height?: number;
 }
 
-interface ImageData extends ImageBlockData {}
+type ImageData = ImageBlockData;
 
 export default function ImageBlock({ 
   block, 
