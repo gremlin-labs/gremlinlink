@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ImageSelector, MediaAsset } from '@/components/ui/image-selector';
+import { Switch } from '@/components/ui/switch';
 import { Info } from 'lucide-react';
 import { ContentBlock } from '@/lib/db/schema';
 
@@ -26,12 +27,15 @@ interface ImageData {
   filename?: string;
   size_bytes?: number;
   mime_type?: string;
+  isHeaderImage?: boolean;
+  isProfileImage?: boolean;
+  imagePosition?: 'left' | 'center' | 'right';
 }
 
 export const ImageEditor: React.FC<ImageEditorProps> = ({ block, onChange }) => {
   const data = block.data as unknown as ImageData;
 
-  const updateData = (key: keyof ImageData, value: string | MediaAsset | null) => {
+  const updateData = (key: keyof ImageData, value: string | MediaAsset | boolean | null) => {
     const newData = { ...block.data, [key]: value };
     
     // If updating the image, also extract URL and metadata for compatibility
@@ -151,6 +155,102 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ block, onChange }) => 
                 />
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Special Image Settings */}
+      {data.image && (
+        <Card className="bg-card-elevated">
+          <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              Special Image Settings
+              <Info className="w-4 h-4 text-muted-foreground" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 px-4 sm:px-6 pb-4 sm:pb-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="isHeaderImage" className="text-sm font-medium">
+                    Use as Page Header Image
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Display this image as the hero banner at the top of the page
+                  </p>
+                </div>
+                <Switch
+                  id="isHeaderImage"
+                  checked={data.isHeaderImage || false}
+                  onCheckedChange={(checked) => {
+                    updateData('isHeaderImage', checked);
+                    if (checked) {
+                      updateData('isProfileImage', false);
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="isProfileImage" className="text-sm font-medium">
+                    Use as Profile/Avatar Image
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Display this image as the profile picture or logo
+                  </p>
+                </div>
+                <Switch
+                  id="isProfileImage"
+                  checked={data.isProfileImage || false}
+                  onCheckedChange={(checked) => {
+                    updateData('isProfileImage', checked);
+                    if (checked) {
+                      updateData('isHeaderImage', false);
+                    }
+                  }}
+                />
+              </div>
+
+              {(data.isHeaderImage || data.isProfileImage) && (
+                <div>
+                  <Label className="block mb-3 text-sm font-medium">Image Position</Label>
+                  <RadioGroup
+                    value={data.imagePosition || 'center'}
+                    onValueChange={(value: string) => updateData('imagePosition', value)}
+                    className="grid grid-cols-3 gap-2"
+                  >
+                    <div className="flex items-center">
+                      <RadioGroupItem value="left" id="pos-left" className="sr-only" />
+                      <Label 
+                        htmlFor="pos-left" 
+                        className="flex items-center justify-center p-2 border rounded cursor-pointer hover:bg-muted has-[:checked]:bg-primary has-[:checked]:text-primary-foreground w-full text-sm"
+                      >
+                        Left
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="center" id="pos-center" className="sr-only" />
+                      <Label 
+                        htmlFor="pos-center" 
+                        className="flex items-center justify-center p-2 border rounded cursor-pointer hover:bg-muted has-[:checked]:bg-primary has-[:checked]:text-primary-foreground w-full text-sm"
+                      >
+                        Center
+                      </Label>
+                    </div>
+                    <div className="flex items-center">
+                      <RadioGroupItem value="right" id="pos-right" className="sr-only" />
+                      <Label 
+                        htmlFor="pos-right" 
+                        className="flex items-center justify-center p-2 border rounded cursor-pointer hover:bg-muted has-[:checked]:bg-primary has-[:checked]:text-primary-foreground w-full text-sm"
+                      >
+                        Right
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

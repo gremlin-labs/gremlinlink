@@ -12,18 +12,17 @@ interface PageData {
   customCSS?: string;
   showHeader?: boolean;
   backgroundColor?: string;
-  headerImage?: {
-    url: string;
-    width?: number;
-    height?: number;
-    alt?: string;
-  };
-  avatarImage?: {
-    url: string;
-    width?: number;
-    height?: number;
-    alt?: string;
-  };
+}
+
+interface ImageBlockData {
+  url?: string;
+  image?: { url: string };
+  alt?: string;
+  isHeaderImage?: boolean;
+  isProfileImage?: boolean;
+  imagePosition?: 'left' | 'center' | 'right';
+  width?: number;
+  height?: number;
 }
 
 interface PageBlockProps {
@@ -35,6 +34,22 @@ export default function PageBlock({ block, mode = 'view' }: PageBlockProps) {
   const data = block.data as PageData;
   const metadata = block.metadata as Record<string, unknown>;
   const blockWithChildren = block as BlockWithChildren;
+
+  // Extract header and profile images from child blocks
+  const headerImageBlock = blockWithChildren.children?.find(
+    child => child.renderer === 'image' && (child.data as ImageBlockData).isHeaderImage
+  );
+  const profileImageBlock = blockWithChildren.children?.find(
+    child => child.renderer === 'image' && (child.data as ImageBlockData).isProfileImage
+  );
+
+  const headerImageData = headerImageBlock?.data as ImageBlockData | undefined;
+  const profileImageData = profileImageBlock?.data as ImageBlockData | undefined;
+
+  // Filter out header and profile images from regular content
+  const contentBlocks = blockWithChildren.children?.filter(
+    child => child !== headerImageBlock && child !== profileImageBlock
+  ) || [];
 
   // Apply layout classes with proper padding
   const layoutClasses = {
@@ -54,6 +69,14 @@ export default function PageBlock({ block, mode = 'view' }: PageBlockProps) {
 
   const themeClass = themeClasses[data.theme || 'light'];
 
+  const getPositionClass = (position?: string) => {
+    switch (position) {
+      case 'left': return 'mr-auto';
+      case 'right': return 'ml-auto';
+      default: return 'mx-auto';
+    }
+  };
+
   // For page blocks, we want to apply the layout and theme to the entire page
   if (mode === 'view') {
     return (
@@ -69,13 +92,18 @@ export default function PageBlock({ block, mode = 'view' }: PageBlockProps) {
           style={{ backgroundColor: data.backgroundColor || undefined }}
         >
           {/* Header Image */}
-          {data.headerImage && (
+          {headerImageData && (headerImageData.url || headerImageData.image?.url) && (
             <div className="page-header-image relative w-full h-[300px] md:h-[400px] lg:h-[480px] overflow-hidden">
               <Image
-                src={data.headerImage.url}
-                alt={data.headerImage.alt || 'Page header'}
+                src={headerImageData.url || headerImageData.image?.url || ''}
+                alt={headerImageData.alt || 'Page header'}
                 fill
-                className="object-cover"
+                className={cn(
+                  "object-cover",
+                  headerImageData.imagePosition === 'left' && "object-left",
+                  headerImageData.imagePosition === 'right' && "object-right",
+                  headerImageData.imagePosition === 'center' && "object-center"
+                )}
                 priority
               />
               {/* Gradient overlay for better text readability */}
@@ -84,14 +112,17 @@ export default function PageBlock({ block, mode = 'view' }: PageBlockProps) {
           )}
           
           <div className={cn('page-content py-8', layoutClass)}>
-            {(data.showHeader !== false) && (metadata.title || metadata.description || data.avatarImage) ? (
-              <div className="page-header mb-12 text-center">
-                {/* Avatar Image */}
-                {data.avatarImage && (
-                  <div className="page-avatar mx-auto mb-6">
+            {(data.showHeader !== false) && (metadata.title || metadata.description || profileImageData) ? (
+              <div className="page-header mb-12">
+                {/* Profile Image */}
+                {profileImageData && (profileImageData.url || profileImageData.image?.url) && (
+                  <div className={cn(
+                    "page-avatar mb-6 w-fit",
+                    getPositionClass(profileImageData.imagePosition)
+                  )}>
                     <Image
-                      src={data.avatarImage.url}
-                      alt={data.avatarImage.alt || 'Page avatar'}
+                      src={profileImageData.url || profileImageData.image?.url || ''}
+                      alt={profileImageData.alt || 'Profile image'}
                       width={120}
                       height={120}
                       className="rounded-full border-4 border-background shadow-lg"
@@ -99,22 +130,33 @@ export default function PageBlock({ block, mode = 'view' }: PageBlockProps) {
                   </div>
                 )}
                 
-                {metadata.title ? (
-                  <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
-                    {String(metadata.title)}
-                  </h1>
-                ) : null}
-                {metadata.description ? (
-                  <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                    {String(metadata.description)}
-                  </p>
-                ) : null}
+                <div className={cn(
+                  profileImageData?.imagePosition === 'left' && "text-left",
+                  profileImageData?.imagePosition === 'right' && "text-right",
+                  (!profileImageData?.imagePosition || profileImageData?.imagePosition === 'center') && "text-center"
+                )}>
+                  {metadata.title ? (
+                    <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
+                      {String(metadata.title)}
+                    </h1>
+                  ) : null}
+                  {metadata.description ? (
+                    <p className={cn(
+                      "text-xl text-muted-foreground max-w-3xl",
+                      profileImageData?.imagePosition === 'left' && "mr-auto",
+                      profileImageData?.imagePosition === 'right' && "ml-auto",
+                      (!profileImageData?.imagePosition || profileImageData?.imagePosition === 'center') && "mx-auto"
+                    )}>
+                      {String(metadata.description)}
+                    </p>
+                  ) : null}
+                </div>
               </div>
             ) : null}
             
-            {/* Page Content */}
+            {/* Page Content - excluding header and profile images */}
             <div className="page-blocks space-y-8">
-              {blockWithChildren.children?.map((child) => (
+              {contentBlocks.map((child) => (
                 <BlockRenderer 
                   key={child.id} 
                   block={child} 
@@ -148,6 +190,14 @@ export default function PageBlock({ block, mode = 'view' }: PageBlockProps) {
         ) : null}
       </div>
       
+      {/* Show special image indicators */}
+      {(headerImageBlock || profileImageBlock) && (
+        <div className="mb-2 p-2 bg-primary/10 rounded text-xs">
+          {headerImageBlock && <div>✓ Header image configured</div>}
+          {profileImageBlock && <div>✓ Profile image configured</div>}
+        </div>
+      )}
+      
       {blockWithChildren.children && blockWithChildren.children.length > 0 ? (
         <div className="text-sm text-muted-foreground">
           Contains {blockWithChildren.children.length} content block{blockWithChildren.children.length !== 1 ? 's' : ''}
@@ -162,4 +212,4 @@ export default function PageBlock({ block, mode = 'view' }: PageBlockProps) {
       )}
     </div>
   );
-} 
+}
